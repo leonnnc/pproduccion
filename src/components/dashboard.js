@@ -72,9 +72,11 @@ export async function renderDashboard(container, user, onLogout) {
             <button class="sidebar-link ${activeTab === 'home' ? 'active' : ''}" data-tab="home">
               <i class="ph ph-house"></i> <span>Inicio</span>
             </button>
-            <button class="sidebar-link ${activeTab === 'events' ? 'active' : ''}" data-tab="events">
-              <i class="ph ph-calendar-blank"></i> <span>Servicios</span>
-            </button>
+            ${['superadmin', 'superleader', 'leader', 'coleader'].includes(profile.rol) ? `
+              <button class="sidebar-link ${activeTab === 'events' ? 'active' : ''}" data-tab="events">
+                <i class="ph ph-calendar-blank"></i> <span>Servicios</span>
+              </button>
+            ` : ''}
             <button class="sidebar-link ${activeTab === 'schedule' ? 'active' : ''}" data-tab="schedule">
               <i class="ph ph-clock"></i> <span>Mi Disponibilidad</span>
             </button>
@@ -144,7 +146,12 @@ export async function renderDashboard(container, user, onLogout) {
     if (activeTab === 'home') {
       renderHome(contentArea);
     } else if (activeTab === 'events') {
-      renderEventsView(contentArea, profile);
+      if (['superadmin', 'superleader', 'leader', 'coleader'].includes(profile.rol)) {
+        renderEventsView(contentArea, profile);
+      } else {
+        activeTab = 'home';
+        renderHome(contentArea);
+      }
     } else if (activeTab === 'schedule') {
       renderScheduleView(contentArea, profile);
     } else if (activeTab === 'areas') {
