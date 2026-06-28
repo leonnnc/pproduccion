@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ProDuccion - Equipo de Producción</title>
+    <meta name="description" content="Sistema de gestión y agendamiento para el equipo de ProDuccion." />
+    <!-- Fuentes premium de Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Iconos Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  </head>
+  <body>
+    <!-- Contenedor principal de la aplicación SPA -->
+    <div id="app">
+      <!-- Intro Futurista de 3 Segundos -->
+      <div id="futuristic-intro" class="intro-screen">
+        <!-- Diapositivas de producción para fundido cruzado (crossfade) -->
+        <div class="intro-slide active" style="background-image: linear-gradient(rgba(3, 4, 8, 0.7), rgba(3, 4, 8, 0.95)), url('/production_bg.png');"></div>
+        <div class="intro-slide" style="background-image: linear-gradient(rgba(3, 4, 8, 0.7), rgba(3, 4, 8, 0.95)), url('/production_bg2.png');"></div>
+        <div class="intro-slide" style="background-image: linear-gradient(rgba(3, 4, 8, 0.7), rgba(3, 4, 8, 0.95)), url('/production_bg3.png');"></div>
+
+        <div class="intro-bg-glow"></div>
+        <div class="intro-core">
+          <div class="intro-ring">
+            <div class="intro-ring-inner">
+              <div id="intro-counter" class="intro-counter-number">3</div>
+            </div>
+          </div>
+          <div class="intro-logo">
+            <span class="logo-p">P</span>
+            <span class="logo-text">RODUCCION</span>
+          </div>
+          <div class="intro-scanner"></div>
+          <div class="intro-loader-line">
+            <div class="intro-loader-progress"></div>
+          </div>
+          <div id="intro-status-text" class="intro-status">INICIALIZANDO SISTEMA...</div>
+        </div>
+      </div>
+      <!-- Contenedor dinámico de vistas -->
+      <div id="app-view" style="display: none; width: 100%; min-height: 100vh;"></div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
