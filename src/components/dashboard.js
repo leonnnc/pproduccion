@@ -164,15 +164,28 @@ export async function renderDashboard(container, user, onLogout) {
 
       <div class="dashboard-grid">
         <div class="grid-col-main" style="display: flex; flex-direction: column; gap: 2rem;">
-          <!-- Mis próximas asignaciones -->
-          <div class="card" id="card-my-assignments">
-            <div class="card-header">
-              <h3 class="card-title"><i class="ph ph-identification-card"></i> Mis Próximos Servicios</h3>
+          
+          <!-- Mis próximas asignaciones (Solo para NO-SuperAdmins) -->
+          ${profile.rol !== 'superadmin' ? `
+            <div class="card" id="card-my-assignments">
+              <div class="card-header">
+                <h3 class="card-title"><i class="ph ph-identification-card"></i> Mis Próximos Servicios</h3>
+              </div>
+              <div class="table-wrapper">
+                <p style="color: var(--text-secondary); text-align: center; padding: 1.5rem;" id="my-assignments-loading">Cargando tus asignaciones...</p>
+              </div>
             </div>
-            <div class="table-wrapper">
-              <p style="color: var(--text-secondary); text-align: center; padding: 1.5rem;" id="my-assignments-loading">Cargando tus asignaciones...</p>
+          ` : `
+            <!-- Panel de Disponibilidad Reciente para el SuperAdmin -->
+            <div class="card" id="card-admin-availability">
+              <div class="card-header">
+                <h3 class="card-title"><i class="ph ph-calendar-check"></i> Siervos Disponibles para Asignación</h3>
+              </div>
+              <div class="table-wrapper">
+                <p style="color: var(--text-secondary); text-align: center; padding: 1.5rem;" id="admin-availability-loading">Cargando disponibilidad de siervos...</p>
+              </div>
             </div>
-          </div>
+          `}
 
           <!-- Servicios programados de la semana -->
           <div class="card" id="card-weekly-events">
@@ -186,10 +199,10 @@ export async function renderDashboard(container, user, onLogout) {
         </div>
 
         <div class="grid-col-sidebar" style="display: flex; flex-direction: column; gap: 2rem;">
-          <!-- Resumen del perfil / áreas a las que pertenece -->
+          <!-- Resumen del perfil / áreas a las que pertenece o áreas generales -->
           <div class="card">
             <div class="card-header">
-              <h3 class="card-title"><i class="ph ph-users"></i> Mis Áreas de Servicio</h3>
+              <h3 class="card-title"><i class="ph ph-users"></i> ${profile.rol === 'superadmin' ? 'Áreas de Servicio' : 'Mis Áreas de Servicio'}</h3>
             </div>
             <div id="my-areas-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
               <p style="color: var(--text-muted); font-size: 0.9rem;">Cargando áreas...</p>
@@ -219,8 +232,12 @@ export async function renderDashboard(container, user, onLogout) {
       </div>
     `;
 
-    // Cargar Datos Asíncronos
-    loadMyAssignments();
+    // Cargar Datos Asíncronos de forma condicional
+    if (profile.rol !== 'superadmin') {
+      loadMyAssignments();
+    } else {
+      loadAdminAvailability();
+    }
     loadWeeklyEvents();
     loadMyAreas();
   };
@@ -349,6 +366,99 @@ export async function renderDashboard(container, user, onLogout) {
     }
   };
 
+  // Cargar disponibilidad global de los siervos para el SuperAdmin
+  const loadAdminAvailability = async () => {
+    const listContainer = document.getElementById('card-admin-availability').querySelector('.table-wrapper');
+    try {
+      const { data, error } = await supabase
+        .from('disponibilidad')
+        .select(`
+          id,
+          dia_semana,
+          fecha,
+          creado_en,
+          usuarios (id, nombre_completo, email, telefono, rol)
+        `)
+        .order('creado_en', { ascending: false });
+
+      if (error) throw error;
+
+      // Filtrar para ocultar a los SuperAdmins (para que no aparezca el propio admin en su lista de siervos disponibles)
+      const filteredData = data ? data.filter(d => d.usuarios && d.usuarios.rol !== 'superadmin') : [];
+
+      if (filteredData.length === 0) {
+        listContainer.innerHTML = `
+          <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+            <i class="ph ph-calendar-blank" style="font-size: 2.5rem; color: var(--text-muted); margin-bottom: 0.5rem; display: block;"></i>
+            Ningún siervo ha registrado su disponibilidad aún.
+          </div>
+        `;
+        return;
+      }
+
+      let rowsHtml = '';
+      filteredData.forEach(item => {
+        const u = item.usuarios;
+        const phone = u.telefono || '<span style="color: var(--text-muted);">Sin teléfono</span>';
+        
+        let availableText = '';
+        if (item.dia_semana === 'domingo') {
+          availableText = '<span class="badge badge-success">Domingo (General)</span>';
+        } else if (item.dia_semana === 'miercoles') {
+          availableText = '<span class="badge badge-info">Miércoles (Oración)</span>';
+        } else {
+          availableText = `<span class="badge badge-warning">Fecha: ${formatDate(item.fecha)}</span>`;
+        }
+
+        rowsHtml += `
+          <tr>
+            <td>
+              <strong>${u.nombre_completo}</strong>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">${u.email}</div>
+            </td>
+            <td>${phone}</td>
+            <td>${availableText}</td>
+            <td>${formatDateTime(item.creado_en)}</td>
+            <td>
+              <button class="btn-primary btn-assign-from-home" data-user-id="${u.id}" data-user-name="${u.nombre_completo}" style="padding: 0.35rem 0.6rem; font-size: 0.8rem; width: auto; display: inline-flex; align-items: center; gap: 0.25rem;">
+                <i class="ph ph-plus-circle"></i> Asignar
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+
+      listContainer.innerHTML = `
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Siervo</th>
+              <th>Teléfono</th>
+              <th>Disponibilidad Declarada</th>
+              <th>Fecha de Registro</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      `;
+
+      // Event listener para asignar directamente
+      listContainer.querySelectorAll('.btn-assign-from-home').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          activeTab = 'events';
+          renderLayout();
+          showToast('Redirigiendo a Servicios. Selecciona un culto para asignar a este siervo.', 'info');
+        });
+      });
+
+    } catch (err) {
+      listContainer.innerHTML = `<p style="color: var(--color-danger); text-align: center; padding: 1.5rem;">Error: ${err.message}</p>`;
+    }
+  };
+
   // Cargar eventos semanales generales
   const loadWeeklyEvents = async () => {
     const container = document.getElementById('card-weekly-events').querySelector('.table-wrapper');
@@ -421,10 +531,38 @@ export async function renderDashboard(container, user, onLogout) {
     }
   };
 
-  // Cargar áreas a las que pertenece el integrante
+  // Cargar áreas a las que pertenece el integrante o áreas generales
   const loadMyAreas = async () => {
     const list = document.getElementById('my-areas-list');
     try {
+      if (profile.rol === 'superadmin') {
+        // Cargar todas las áreas generales para el SuperAdmin
+        const { data, error } = await supabase
+          .from('areas')
+          .select('nombre, descripcion')
+          .order('nombre');
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          list.innerHTML = `<p style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1rem;">No hay áreas de servicio creadas.</p>`;
+          return;
+        }
+
+        let html = '';
+        data.forEach(area => {
+          html += `
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); padding: 0.75rem; border-radius: var(--border-radius-sm);">
+              <strong style="color: var(--primary); font-size: 0.9rem;">${area.nombre}</strong>
+              <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">${area.descripcion || 'Sin descripción'}</div>
+            </div>
+          `;
+        });
+        list.innerHTML = html;
+        return;
+      }
+
+      // Para los demás usuarios, cargar solo sus áreas inscritas
       const { data, error } = await supabase
         .from('miembros_areas')
         .select(`
